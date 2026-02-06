@@ -10,6 +10,10 @@
 
 사용자가 지정한 화면 영역(ROI)의 **숫자, 텍스트, 색상 변화**를 감지하여 설정된 조건(임계값 초과, 텍스트 변경 등)을 만족할 경우 즉각적인 시청각 알림을 제공합니다.
 
+<img width="893" height="394" alt="image" src="https://github.com/user-attachments/assets/9e8f62fd-dca4-451a-b1d3-d33018796bca" />
+<img width="400" height="224" alt="image" src="https://github.com/user-attachments/assets/2050c812-d61c-42fb-8554-f2f93a56c487" />
+
+
 ---
 
 ## ✨ Key Features (주요 기능)
