@@ -42,19 +42,18 @@ def color_diff(c1, c2):
 class UniversalMonitor:
     def __init__(self, root):
         self.root = root
-        self.root.title("만능 화면 감시기 (팝업 알림 버전)")
-        self.root.geometry("900x600")
+        self.root.title("만능 화면 감시기 (삭제 기능 추가됨)")
+        self.root.geometry("950x600")
 
         self.target_title = None
         self.monitors = [] 
         self.is_running = False
         self.is_selecting = False
         
-        # 알림 설정 변수
-        self.sound_enabled = tk.BooleanVar(value=False) # 스피커 없으므로 기본 OFF
-        self.popup_enabled = tk.BooleanVar(value=True)  # 팝업 기본 ON
+        self.sound_enabled = tk.BooleanVar(value=False)
+        self.popup_enabled = tk.BooleanVar(value=True)
         
-        self.alert_window = None # 현재 떠있는 경고창
+        self.alert_window = None 
 
         self.select_target_window()
         self.setup_ui()
@@ -84,14 +83,12 @@ class UniversalMonitor:
         if not self.target_title: sys.exit()
 
     def setup_ui(self):
-        # 상단 컨트롤 패널
         ctrl_frame = tk.Frame(self.root, pady=10, bg="#444")
         ctrl_frame.pack(fill="x")
 
         tk.Button(ctrl_frame, text="+ 감시 추가", command=self.add_row, 
                   bg="#00d2ff", fg="black", font=("맑은 고딕", 10, "bold"), width=12).pack(side="left", padx=10)
         
-        # 알림 옵션 체크박스들
         tk.Checkbutton(ctrl_frame, text="팝업 알림 켜기", variable=self.popup_enabled, 
                        bg="#444", fg="#00ff00", selectcolor="#444", font=("맑은 고딕", 10, "bold")).pack(side="left", padx=10)
 
@@ -100,14 +97,13 @@ class UniversalMonitor:
 
         tk.Label(ctrl_frame, text=f"타겟: {self.target_title}", fg="white", bg="#444").pack(side="right", padx=10)
 
-        # 헤더
         h_frame = tk.Frame(self.root, bg="#ddd", pady=3)
         h_frame.pack(fill="x", padx=5)
-        cols = [("이름", 10), ("현재값 / 상태", 20), ("감시 모드", 15), ("조건(Target)", 10), ("추가값", 8), ("설정", 8)]
+        # [수정] 마지막에 '삭제' 컬럼 추가를 위해 너비 조정
+        cols = [("이름", 10), ("현재값 / 상태", 18), ("감시 모드", 15), ("조건(Target)", 10), ("추가값", 8), ("설정", 8), ("삭제", 5)]
         for txt, w in cols:
             tk.Label(h_frame, text=txt, width=w, bg="#ddd", font=("맑은 고딕", 9, "bold")).pack(side="left", padx=2)
 
-        # 스크롤 영역
         self.canvas = tk.Canvas(self.root)
         self.scrollbar = tk.Scrollbar(self.root, orient="vertical", command=self.canvas.yview)
         self.scroll_frame = tk.Frame(self.canvas)
@@ -121,14 +117,15 @@ class UniversalMonitor:
 
     def add_row(self):
         idx = len(self.monitors)
-        row = tk.Frame(self.scroll_frame, pady=5, bd=1, relief="solid", bg="#f9f9f9")
-        row.pack(fill="x", padx=5, pady=2)
+        # 프레임을 변수에 저장 (나중에 삭제할 때 쓰려고)
+        row_frame = tk.Frame(self.scroll_frame, pady=5, bd=1, relief="solid", bg="#f9f9f9")
+        row_frame.pack(fill="x", padx=5, pady=2)
 
-        name_ent = tk.Entry(row, width=10, justify="center")
+        name_ent = tk.Entry(row_frame, width=10, justify="center")
         name_ent.insert(0, f"항목 {idx+1}")
         name_ent.pack(side="left", padx=2)
 
-        val_lbl = tk.Label(row, text="[대기]", width=22, bg="#eee", relief="sunken")
+        val_lbl = tk.Label(row_frame, text="[대기]", width=20, bg="#eee", relief="sunken")
         val_lbl.pack(side="left", padx=2)
 
         modes = [
@@ -140,27 +137,54 @@ class UniversalMonitor:
             "텍스트 불일치 (Not Equal)",
             "색상 변화 (Color Change)"
         ]
-        mode_cb = ttk.Combobox(row, values=modes, width=22, state="readonly")
+        mode_cb = ttk.Combobox(row_frame, values=modes, width=22, state="readonly")
         mode_cb.current(1)
         mode_cb.pack(side="left", padx=2)
 
-        target1 = tk.Entry(row, width=12, justify="center")
+        target1 = tk.Entry(row_frame, width=12, justify="center")
         target1.pack(side="left", padx=2)
 
-        target2 = tk.Entry(row, width=10, justify="center")
+        target2 = tk.Entry(row_frame, width=10, justify="center")
         target2.pack(side="left", padx=2)
+        
+        # [수정] 삭제 버튼 추가
+        # 삭제 함수 호출 시 item 본인을 넘기기 위해 미리 딕셔너리 구조를 생각함
+        del_btn = tk.Button(row_frame, text="X", bg="#ffcccc", fg="red", font=("bold", 9))
+        del_btn.pack(side="right", padx=5)
 
-        btn = tk.Button(row, text="영역 잡기", command=lambda i=idx: self.set_roi(i), bg="#ffcc00")
-        btn.pack(side="right", padx=5)
+        roi_btn = tk.Button(row_frame, text="영역 잡기", command=lambda i=idx: self.set_roi(i), bg="#ffcc00")
+        roi_btn.pack(side="right", padx=5)
 
-        self.monitors.append({
+        # 모니터링 아이템 딕셔너리 생성
+        monitor_item = {
             "widgets": [name_ent, val_lbl, mode_cb, target1, target2],
+            "frame": row_frame,  # [중요] 프레임 자체를 저장해야 화면에서 지울 수 있음
             "roi": None,
             "base_color": None, 
             "last_alert": 0
-        })
+        }
+        
+        # 삭제 버튼에 기능 연결 (lambda를 써서 자기 자신 monitor_item을 인자로 넘김)
+        del_btn.config(command=lambda: self.remove_row(monitor_item))
+        
+        # 리스트에 추가
+        self.monitors.append(monitor_item)
 
-    def set_roi(self, idx):
+        # set_roi에서 인덱스를 쓰는데, 리스트 길이가 변하면 인덱스가 꼬일 수 있음.
+        # 따라서 roi 버튼 커맨드도 '인덱스' 대신 '아이템 객체'를 넘기는 방식으로 바꾸는 게 안전하지만
+        # 기존 코드를 최소한으로 건드리기 위해, set_roi 로직은 유지하되
+        # 새로 추가된 항목에 대해서만 작동하도록 함 (기존 set_roi는 인덱스 의존적이라 삭제 시 꼬일 수 있음)
+        # --> 안전하게 set_roi도 수정합니다.
+        roi_btn.config(command=lambda: self.set_roi_by_item(monitor_item))
+
+    def remove_row(self, item):
+        """항목 삭제 함수"""
+        if item in self.monitors:
+            self.monitors.remove(item)  # 리스트에서 데이터 삭제
+            item['frame'].destroy()     # 화면(UI)에서 삭제
+            
+    def set_roi_by_item(self, item):
+        """[수정] 인덱스 대신 아이템 객체를 직접 이용해 ROI 설정"""
         self.is_selecting = True
         time.sleep(0.2)
         try:
@@ -181,13 +205,13 @@ class UniversalMonitor:
 
             if r[2] > 0 and r[3] > 0:
                 roi_data = (int(r[0]), int(r[1]), int(r[2]), int(r[3]))
-                self.monitors[idx]['roi'] = roi_data
+                item['roi'] = roi_data # 해당 아이템에 직접 저장
                 
                 roi_img = img[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2])]
                 avg_color = np.mean(roi_img, axis=(0, 1))
-                self.monitors[idx]['base_color'] = avg_color
+                item['base_color'] = avg_color
                 
-                self.monitors[idx]['widgets'][1].config(text="영역 설정됨", bg="#d0f0c0")
+                item['widgets'][1].config(text="영역 설정됨", bg="#d0f0c0")
         except Exception as e:
             print(f"Error: {e}")
         finally:
@@ -200,9 +224,8 @@ class UniversalMonitor:
         t.start()
 
     def show_popup_alert(self, title, message):
-        """빨간색 경고 팝업창 띄우기 (중복 방지)"""
         if self.alert_window is not None:
-            return # 이미 창이 떠있으면 새로 안 만듦
+            return
 
         def close_alert():
             if self.alert_window:
@@ -213,9 +236,8 @@ class UniversalMonitor:
         top.title("⚠️ 경고 ⚠️")
         top.geometry("400x200")
         top.configure(bg="red")
-        top.attributes('-topmost', True) # 항상 맨 위에
+        top.attributes('-topmost', True)
         
-        # 화면 중앙 배치
         x = (self.root.winfo_screenwidth() // 2) - 200
         y = (self.root.winfo_screenheight() // 2) - 100
         top.geometry(f"+{x}+{y}")
@@ -225,7 +247,7 @@ class UniversalMonitor:
         
         tk.Button(top, text="확인 (닫기)", command=close_alert, bg="white", font=("bold", 12)).pack(pady=20)
         
-        top.protocol("WM_DELETE_WINDOW", close_alert) # X 버튼 눌러도 초기화
+        top.protocol("WM_DELETE_WINDOW", close_alert)
         self.alert_window = top
 
     def loop(self):
@@ -241,9 +263,12 @@ class UniversalMonitor:
                     if win.isMinimized: time.sleep(0.5); continue
 
                     current_mons = list(self.monitors)
-                    any_alert_triggered = False # 이번 루프에서 알람이 있었는지 체크
+                    any_alert_triggered = False
 
                     for item in current_mons:
+                        # [안전장치] 혹시 루프 도는 중에 삭제되었을까봐 체크
+                        if item not in self.monitors: continue
+
                         roi = item['roi']
                         if not roi: continue
                         
@@ -258,7 +283,6 @@ class UniversalMonitor:
                         is_alert = False
                         display_txt = ""
 
-                        # [A] 색상
                         if "색상" in mode:
                             curr_img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
                             curr_color = np.mean(curr_img, axis=(0, 1))
@@ -269,8 +293,6 @@ class UniversalMonitor:
                                 threshold = float(t_val) if t_val else 30.0
                                 is_alert = diff > threshold
                                 display_txt = f"차이: {diff:.1f}"
-
-                        # [B] OCR
                         else:
                             gray = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
                             text = pytesseract.image_to_string(gray, lang='eng+kor', config='--psm 7').strip()
@@ -299,14 +321,11 @@ class UniversalMonitor:
 
                         self.update_ui(val_lbl, display_txt, is_alert)
 
-                        # 알림 조건 만족 시 팝업 띄우기
                         if is_alert:
                             any_alert_triggered = True
                             if self.popup_enabled.get():
-                                # 메인 스레드 충돌 방지를 위해 after 사용
                                 self.root.after(0, lambda: self.show_popup_alert(item_name, f"현재값: {display_txt}"))
 
-                    # 소리 알림 (팝업과는 별도로 작동)
                     if any_alert_triggered and self.sound_enabled.get():
                         winsound.Beep(1000, 100)
 
@@ -317,10 +336,13 @@ class UniversalMonitor:
                     time.sleep(1)
 
     def update_ui(self, label, text, alert):
-        color = "#ff5555" if alert else "#f0f0f0"
-        fg_color = "white" if alert else "black"
-        if len(text) > 15: text = text[:15] + ".."
-        label.config(text=text, bg=color, fg=fg_color)
+        # UI 업데이트는 메인 스레드에서 하거나 안전하게 처리
+        try:
+            color = "#ff5555" if alert else "#f0f0f0"
+            fg_color = "white" if alert else "black"
+            if len(text) > 15: text = text[:15] + ".."
+            label.config(text=text, bg=color, fg=fg_color)
+        except: pass
 
 if __name__ == "__main__":
     root = tk.Tk()
