@@ -1,9 +1,3 @@
-GitHub 저장소(Repository)의 메인 화면인 **README.md** 파일에 들어갈 내용을 전문적인 오픈소스 프로젝트 스타일로 작성해 드립니다.
-
-이 내용을 복사해서 `README.md`라는 파일명으로 저장하시면 됩니다.
-
----
-
 # 🖥️ Universal Screen Monitor (OCR & Color Watcher)
 
 <p align="center">
